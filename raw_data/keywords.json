@@ -1,0 +1,401 @@
+[
+  {
+    "primary_keyword": "Minibar生活吧",
+    "secondary_keywords": [
+      {
+        "keyword": "餐具Tableware",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "微波炉Microwave Oven",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "冰箱（冷冻&冷藏）Refrigerator & freezer",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "水槽 Sink",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "外借厨具 Kitchenware for borrow",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "胶囊咖啡机 Capsule coffee machine",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "做饭/烹饪 Cooking",
+        "is_exclusive": true
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Bathroom 卫生间",
+    "secondary_keywords": [
+      {
+        "keyword": "淋浴用品 Shower supplies",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "马桶Toilet",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "镜子置物架 Mirror shelf",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "镜子 Mirror",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "洗漱台面空间 The countertop space/ Table top",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "毛巾 Towel",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "备品 Toiletries",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Guestroom amenities客房设施",
+    "secondary_keywords": [
+      {
+        "keyword": "收纳/置物架 Sheleves",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "存储空间/行李架 Storage space/ Luggage area",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "家具Furniture",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "衣柜Wardrobe",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "熨衣板、熨斗Ironing board, iron",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "床头柜Nightstand ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "插座Receptacle ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "地板/地毯 Floor/ floormat",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Guestroom layout客房布局",
+    "secondary_keywords": [
+      {
+        "keyword": "设计Layout design",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "功能分区 Functional partitioning",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Guest area/ soft seating 会客/休闲区",
+    "secondary_keywords": [
+      {
+        "keyword": "移动屏风 Moveable screen",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "布局拥挤/宽敞Layout -crowding or spacious?",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "沙发不靠窗？Sofa away from the window? ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "沙发、沙发床 Sofa, sofa bed",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "多功能茶几、脚凳 Multifunctional coffee table, footstool",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "workspace 工作区",
+    "secondary_keywords": [
+      {
+        "keyword": "移动书桌 Moveable desk/table",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "椅子Chair",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Guestroom - smart room 智能客房",
+    "secondary_keywords": [
+      {
+        "keyword": "电动窗帘 Smart/ electronic curtain",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "可旋转电视机 Rotating TV/ TV with rotatble screen",
+        "is_exclusive": true
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Guestroom - Top of Bed 床上用品",
+    "secondary_keywords": [
+      {
+        "keyword": "床品 Beddings",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "枕头 Pillow",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "床垫 Mattress ",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Artwork/Theming 艺术品/画",
+    "secondary_keywords": [
+      {
+        "keyword": "磁铁墙 Magnet wall ",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "艺术画 Paintings/ artistic decorations",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Room types客房类型",
+    "secondary_keywords": [
+      {
+        "keyword": "单人间 Single rooms",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "双人间 Double rooms",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "套间 Suites",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "主题房 Themed rooms",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "宠物友好 Pet Friendly",
+        "is_exclusive": true
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Entrance/lobby 入口/大堂",
+    "secondary_keywords": [
+      {
+        "keyword": "大堂设计/色调/高级感 Lobby design/ color tone/ sense of premium",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "休息社交区域 Resting area/ social space ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "品牌墙 Brand wall",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "绿洲沙发 \"Oasis sofa\"",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "充电 Charge/ recharge",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "香氛 Fragrance",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Shop 小商店/零售店",
+    "secondary_keywords": [
+      {
+        "keyword": "心选小铺  \"Home2 MKT\"",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "饮料 Beverages and drinks",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "方便食品 Instant food/ Convenience food",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "零食 Snacks ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "生活用品 Daily necessities ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "宠物食品 Pet food",
+        "is_exclusive": true
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Beverage Counter 饮品区",
+    "secondary_keywords": [
+      {
+        "keyword": "自助饮吧 \"Coffee 2 Tea\"",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "咖啡 Coffee",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "奶茶 Milk tea",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "自助调配茶饮 Self-service tea/ self blending tea",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "糖浆 Syrup",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Fitness Center 健身房",
+    "secondary_keywords": [
+      {
+        "keyword": "健身房 Gym/ \"Spin 2 Cycle\"",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "泳池Pool",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Laundry Room 洗衣房",
+    "secondary_keywords": [
+      {
+        "keyword": "自助洗衣 Self-service laundry ",
+        "is_exclusive": true
+      },
+      {
+        "keyword": "洗衣液 Laundry detergent",
+        "is_exclusive": true
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Business Area 商务区",
+    "secondary_keywords": [
+      {
+        "keyword": "商务打印区 Business area/ print area/ business service",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Outdoor area 户外休息区",
+    "secondary_keywords": [
+      {
+        "keyword": "户外休息区/户外庭院 Outdoor area/ Outdoor lounge",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "园林景观Landscape",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Ameneties设施",
+    "secondary_keywords": [
+      {
+        "keyword": "环保绿色材料 Environmental friendly materials",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "网络 Internet",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "灯光 Light",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "座位 Seats",
+        "is_exclusive": false
+      }
+    ]
+  },
+  {
+    "primary_keyword": "Breakfast 早餐",
+    "secondary_keywords": [
+      {
+        "keyword": "早餐品类/种类 Breakfast offerings/ types",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "当地特色菜 Local specialities ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "蛋糕甜品 Cakes and desserts",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "饮品 Beverages and drinks ",
+        "is_exclusive": false
+      },
+      {
+        "keyword": "生滚粥、粥 Congee/ porridge",
+        "is_exclusive": false
+      }
+    ]
+  }
+]
