@@ -5,3 +5,6 @@ __pycache__/
 demo/
 
 venv/
+
+raw_data/wb
+raw_data/xhs
