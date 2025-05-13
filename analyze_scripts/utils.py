@@ -1,8 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
+from pprint import pprint
+import random
 import re
 
+from httpx import delete
 from openai import OpenAI
 
 
@@ -79,7 +82,6 @@ class PostsFilter:
             simplified_posts = []
             for post in hotel["posts"]:
                 simplified_post = {
-                    # "note_id": post["note_id"], # 移除原来的直接赋值
                     "content": post["content"],
                     "timestamp": post["timestamp"],
                     "link": post["link"],
@@ -95,7 +97,7 @@ class PostsFilter:
 
             simplified_hotel = {
                 "hotel": hotel["hotel"],
-                "posts": simplified_posts # 使用修改后的 simplified_posts
+                "posts": simplified_posts
             }
             simplified_data.append(simplified_hotel)
         return simplified_data
@@ -282,4 +284,563 @@ def get_raw_data(path):
     else:
         print("path不存在")
         return None
+    
+def write_to_json(data, path):
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"写入文件时发生错误: {e}")
+        raise
 
+
+def rearrange_flyert_data():
+    links_path = os.path.join("raw_data", "flyert_links.json")
+    absolute_links_path = os.path.abspath(links_path)
+    raw_data_path = os.path.join("raw_data", "flyert.json")
+    absolute_raw_data_path = os.path.abspath(raw_data_path)
+    analyzed_data_path = os.path.join("analysis_result", "flyert_analyzed.json")
+    absolute_analyzed_data_path = os.path.abspath(analyzed_data_path)
+
+    with open(absolute_links_path, "r", encoding="utf-8") as f:
+        links = json.load(f)
+        
+    with open(absolute_raw_data_path, "r", encoding="utf-8") as f:
+        raw_data = json.load(f)
+    
+    with open(absolute_analyzed_data_path, "r", encoding="utf-8") as f:
+        analyzed_data = json.load(f)
+        
+    raw_posts_list = [post for hotel in raw_data for post in hotel['posts']]
+    analyzed_posts_list = [post for hotel in analyzed_data for post in hotel['posts']]
+        
+    new_raw_data = []
+    new_analyzed_data = []
+    for hotel in links:
+        hotel_name = hotel['hotel']
+        hotel_links = hotel['links']
+        tmp_raw = {
+            'hotel': hotel_name,
+            'posts': []
+        }
+        for post in raw_posts_list:
+            if post['link'] in hotel_links:
+                tmp_raw['posts'].append(post)
+                
+        tmp_analyzed = {
+            'hotel': hotel_name,
+            'posts': []
+        }
+        for post in analyzed_posts_list:
+            if post['link'] in hotel_links:
+                tmp_analyzed['posts'].append(post)
+        new_raw_data.append(tmp_raw)
+        new_analyzed_data.append(tmp_analyzed)
+    
+    with open(analyzed_data_path, "w", encoding="utf-8") as f:
+        json.dump(new_analyzed_data, f, ensure_ascii=False, indent=4)
+    
+    with open(raw_data_path, "w", encoding="utf-8") as f:
+        json.dump(new_raw_data, f, ensure_ascii=False, indent=4)
+
+    
+def format_xhs_data_from_mobile(file_path, hotel_name):
+    """
+    将从移动端爬取的xhs数据格式化成与flyert数据格式相同的格式，以便于分析
+    """
+    with open("raw_data/xhs.json", "r", encoding="utf-8") as f:
+        existing_data = json.load(f)
+        
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    # 获取已有的帖子内容用于去重
+    existing_post_contents = []
+    for hotel in existing_data:
+        if hotel['hotel'] == hotel_name:
+            existing_post_contents = [post['content'] for post in hotel['posts']]
+            break
+    
+    new_data = [
+        {
+            "hotel": hotel_name,
+            "posts": []
+        }
+    ]
+    for post in data:
+        content = post.get('title', '') + post.get('body', '')
+        if not content: continue
+        
+        # 通过content进行去重
+        if content in existing_post_contents:
+            continue
+        
+        if post.get('timestamp_location', None):
+            parsed_timestamp = parse_timestamp(post['timestamp_location'])
+        elif post.get('timestamp', None):
+            parsed_timestamp = parse_timestamp(post['timestamp'])
+        else:
+            print("没有时间戳")
+            continue
+        if not parsed_timestamp:
+            continue
+        tmp = {
+            "note_id": "",
+            "content": content,
+            "timestamp": parsed_timestamp,
+            "link": "",
+            "replies": []
+        }
+        if post['comments']:
+            for comment in post['comments']:
+                if comment.get('date_location', None):
+                    parsed_comment_timestamp = parse_timestamp(comment['date_location'])
+                    if not parsed_comment_timestamp:
+                        continue
+                else:
+                    print("没有时间戳")
+                    continue
+                
+                tmp['replies'].append({
+                        "commenter_name": "",
+                        "comment_content": comment["comment_text"],
+                        "commenter_link": "",
+                        "comment_time": parsed_comment_timestamp
+                    })
+        new_data[0]['posts'].append(tmp)
+        
+    return new_data
+
+
+def format_all_xhs_data_from_mobile(data_path, hotel_names):
+
+    all_data = []
+    for path, hotel_name in zip(data_path, hotel_names):
+        data = format_xhs_data_from_mobile(path, hotel_name)
+        all_data.extend(data)
+    
+    return all_data
+
+
+def merge_data(formatted_data, existing_data_path):
+    """
+    将格式化或分析后的数据合并到已有的数据中，并根据 post['content'] 进行去重。
+    """
+    existing_data = get_raw_data(existing_data_path)
+    if existing_data is None:
+        print(f"警告: {existing_data_path} 不存在或为空")
+        raise
+
+    for formatted_hotel in formatted_data:
+        found_hotel = False
+        for existing_hotel in existing_data:
+            if formatted_hotel['hotel'] == existing_hotel['hotel']:
+                found_hotel = True
+                # 获取现有帖子的内容集合，用于去重
+                existing_contents = {post['content'] for post in existing_hotel['posts'] if 'content' in post}
+                
+                new_posts_to_add = []
+                for post_to_add in formatted_hotel['posts']:
+                    if 'content' in post_to_add and post_to_add['content'] not in existing_contents:
+                        new_posts_to_add.append(post_to_add)
+                        existing_contents.add(post_to_add['content']) # 将新添加的内容也加入，防止formatted_hotel内部重复
+                
+                existing_hotel['posts'].extend(new_posts_to_add)
+                break
+        
+        if not found_hotel:
+            # 如果在 existing_data 中没有找到对应的酒店，则将整个 formatted_hotel 添加进去
+            # (确保其帖子也是唯一的，如果 formatted_data 内部可能有重复)
+            unique_posts_for_new_hotel = []
+            seen_contents_for_new_hotel = set()
+            for post in formatted_hotel['posts']:
+                if 'content' in post and post['content'] not in seen_contents_for_new_hotel:
+                    unique_posts_for_new_hotel.append(post)
+                    seen_contents_for_new_hotel.add(post['content'])
+            if unique_posts_for_new_hotel: # 只有当有帖子时才添加酒店
+                existing_data.append({
+                    'hotel': formatted_hotel['hotel'],
+                    'posts': unique_posts_for_new_hotel
+                })
+    
+    write_to_json(existing_data, existing_data_path)
+    return existing_data
+    
+
+def format_iso_timestamp_to_custom(iso_timestamp_str):
+    """
+    将ISO格式的时间戳字符串 (例如 '2024-08-09 16:55:35+08:00') 
+    转换为 'YYYY-MM-DD HH:MM' 格式。
+
+    Args:
+        iso_timestamp_str (str): ISO格式的时间戳字符串。
+
+    Returns:
+        str: 'YYYY-MM-DD HH:MM' 格式的时间戳字符串，如果解析失败则返回 None。
+    """
+    if not iso_timestamp_str or not isinstance(iso_timestamp_str, str):
+        # print(f"输入无效: {iso_timestamp_str} 不是一个有效的字符串")
+        return None
+    try:
+        # datetime.fromisoformat 可以直接处理这种带时区信息的格式
+        # 对于 '2024-08-09 16:55:35+08:00' 这种中间有空格的，需要替换成 'T'
+        # 或者，如果确定总是 +08:00，也可以先移除时区部分再解析
+        # 更通用的方法是尝试直接解析，如果失败，再尝试替换空格
+        dt_object = None
+        try:
+            dt_object = datetime.fromisoformat(iso_timestamp_str)
+        except ValueError:
+            # 尝试替换空格为 'T'，因为 fromisoformat 期望 'T' 作为日期和时间的分隔符
+            # 对于 'YYYY-MM-DD HH:MM:SS+HH:MM' 格式，Python 3.11+ 的 fromisoformat 可以直接处理空格
+            # 但为了兼容性，我们还是处理一下
+            if ' ' in iso_timestamp_str and '+' in iso_timestamp_str:
+                parts = iso_timestamp_str.split(' ')
+                if len(parts) == 2 and ':' in parts[1]: # 确保是 日期 时间+时区 的形式
+                    # 检查时间部分是否包含秒和时区
+                    time_part_with_tz = parts[1]
+                    if time_part_with_tz.count(':') >= 2 and ('+' in time_part_with_tz or '-' in time_part_with_tz):
+                         # 看起来像 'HH:MM:SS+HH:MM' 或 'HH:MM:SS-HH:MM'
+                        iso_compatible_str = parts[0] + 'T' + parts[1]
+                        try:
+                            dt_object = datetime.fromisoformat(iso_compatible_str)
+                        except ValueError:
+                            # print(f"尝试替换空格后仍然无法解析时间格式: {iso_timestamp_str}")
+                            return None # 如果替换后还不行，则放弃
+                    else:
+                        # print(f"时间部分格式不符合预期: {time_part_with_tz}")
+                        return None # 时间部分不符合 'HH:MM:SS+HH:MM' 格式
+                else:
+                    # print(f"字符串格式不符合 '日期 时间+时区' 的预期: {iso_timestamp_str}")
+                    return None # 格式不符合预期
+            else:
+                 # print(f"无法直接解析且格式不包含空格和时区指示: {iso_timestamp_str}")
+                 return None # 无法解析
+        
+        if dt_object:
+            return dt_object.strftime("%Y-%m-%d %H:%M")
+        else:
+            # print(f"最终未能成功解析时间对象: {iso_timestamp_str}")
+            return None
+            
+    except ValueError as e:
+        # print(f"解析时间格式时发生错误 '{iso_timestamp_str}': {e}")
+        return None
+    except Exception as e:
+        # print(f"处理时间戳 '{iso_timestamp_str}' 时发生未知错误: {e}")
+        return None
+
+
+def format_wb_timestamp():
+    data = get_raw_data("raw_data/wb.json")
+    if data is None:
+        return
+    for hotel in data:
+        for post in hotel['posts']:
+            post['timestamp'] = format_iso_timestamp_to_custom(post['timestamp'])
+            for reply in post['replies']:
+                reply['comment_time'] = format_iso_timestamp_to_custom(reply['comment_time'])
+
+    write_to_json(data, "raw_data/wb.json")
+
+
+def parse_timestamp(timestamp_str):
+    """
+    解析移动端xhs爬虫获取的时间戳
+    """
+    now = datetime.now()
+    # 定义随机时间范围
+    start_random_date = datetime(2024, 3, 1, 0, 0)
+    end_random_date = datetime(2025, 2, 28, 0, 0)
+    time_difference_seconds = int((end_random_date - start_random_date).total_seconds())
+
+    def get_random_timestamp():
+        random_seconds = random.randint(0, time_difference_seconds)
+        random_date = start_random_date + timedelta(seconds=random_seconds)
+        return random_date.strftime("%Y-%m-%d %H:%M")
+
+    original_timestamp_str = timestamp_str 
+    timestamp_str = timestamp_str.strip()
+
+    # 0. X minute(s) ago (可能带有地点)
+    # Example: "50 minute(s) ago"
+    # Try matching with optional location first
+    match = re.fullmatch(r"(\d+)\s+minute(?:s)?\s+ago(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str, re.IGNORECASE)
+    if not match: # Then try matching without location if the first attempt failed
+        match = re.fullmatch(r"(\d+)\s+minute(?:s)?\s+ago", timestamp_str, re.IGNORECASE)
+    if match:
+        minutes_ago = int(match.group(1))
+        dt = now - timedelta(minutes=minutes_ago)
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    # 1. YYYY-MM-DD (可能带有地点)
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str)
+    if not match:
+        core_date_match = re.match(r"(\d{4}-\d{2}-\d{2})", timestamp_str)
+        if core_date_match:
+            timestamp_str_cleaned = core_date_match.group(1)
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", timestamp_str_cleaned): # Ensure it's just the date
+                try:
+                    dt = datetime.strptime(timestamp_str_cleaned, "%Y-%m-%d")
+                    return dt.strftime("%Y-%m-%d %H:%M")
+                except ValueError:
+                    pass
+    elif match: # if fullmatch with optional location worked
+        try:
+            dt = datetime.strptime(match.group(1) + "-" + match.group(2) + "-" + match.group(3), "%Y-%m-%d")
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+
+    # 2. MM-DD (current year, 可能带有地点)
+    # Example: "04-30 Jiangsu"
+    match = re.fullmatch(r"(\d{2})-(\d{2})(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str)
+    if not match:
+        core_date_match = re.match(r"(\d{2}-\d{2})", timestamp_str)
+        if core_date_match:
+            timestamp_str_cleaned = core_date_match.group(1)
+            if re.fullmatch(r"\d{2}-\d{2}", timestamp_str_cleaned):
+                try:
+                    dt = datetime.strptime(f"{now.year}-{timestamp_str_cleaned}", "%Y-%m-%d")
+                    return dt.strftime("%Y-%m-%d %H:%M")
+                except ValueError:
+                    pass 
+    elif match:
+        try:
+            dt = datetime.strptime(f"{now.year}-{match.group(1)}-{match.group(2)}", "%Y-%m-%d")
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+
+    # 3. X hour(s) ago (可能带有地点)
+    match = re.fullmatch(r"(\d+)\s+hour(?:s)?\s+ago(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str, re.IGNORECASE)
+    if not match:
+        match = re.fullmatch(r"(\d+)\s+hour(?:s)?\s+ago", timestamp_str, re.IGNORECASE)
+    if match:
+        hours_ago = int(match.group(1))
+        dt = now - timedelta(hours=hours_ago)
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    # 4. X day(s) ago (可能带有地点)
+    # Example: "2 days ago Guangdong", "2 day(s) ago", "4 days ago Shanghai"
+    # Regex updated to handle "day", "days", and "day(s)"
+    match = re.fullmatch(r"(\d+)\s+day(?:s|\(s\))?\s+ago(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str, re.IGNORECASE)
+    if not match:
+        match = re.fullmatch(r"(\d+)\s+day(?:s|\(s\))?\s+ago", timestamp_str, re.IGNORECASE)
+    if match:
+        days_ago = int(match.group(1))
+        dt = now - timedelta(days=days_ago)
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    # 5. Yesterday HH:MM (AM/PM) (可能带有地点)
+    match = re.fullmatch(r"Yesterday\s+(\d{1,2}):(\d{2})(?:\s+(AM|PM))?(?:\s+[A-Za-z\u4e00-\u9fa5]+)?", timestamp_str, re.IGNORECASE)
+    if not match:
+        match = re.fullmatch(r"Yesterday\s+(\d{1,2}):(\d{2})(?:\s+(AM|PM))?", timestamp_str, re.IGNORECASE)
+    if match:
+        yesterday = now - timedelta(days=1)
+        hour = int(match.group(1))
+        minute = int(match.group(2))
+        am_pm = match.group(3)
+        if am_pm and am_pm.upper() == "PM" and hour < 12:
+            hour += 12
+        elif am_pm and am_pm.upper() == "AM" and hour == 12:
+            hour = 0
+        try:
+            dt = yesterday.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass 
+
+    month_map = {
+        "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+        "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+    }
+
+    # 6. Mon DD (current year, e.g., Apr 03) (可能带有地点)
+    # 7. Edited on Mon DD (current year, e.g., Edited on Mar 19) (可能带有地点)
+    # 8. Mon DDLocation (current year, e.g., Apr 26Hebei, Apr 17Jiangsu, Edited on Apr 25Fujian, Apr 23Liaoning, Apr 24Shanghai)
+    # Regex to capture "Edited on", month, day, and allow location to be directly attached or spaced, and can be English/Chinese.
+    # Also allows for extra text after the location part.
+    pattern_mon_dd = re.compile(
+        r"(?:Edited\s+on\s+)?([A-Za-z]{3})\s+(\d{1,2})(?:\s*([A-Za-z\u4e00-\u9fa5]+))?(?:\s+.*)?", re.IGNORECASE
+    )
+    # We use re.match here because we only care about the beginning of the string matching the date pattern.
+    match = pattern_mon_dd.match(timestamp_str.strip()) # Changed from fullmatch to match
+    if match:
+        # Check if the matched part is the whole string or if there's only location/extra text after the core date.
+        # This is a bit tricky. We want to ensure we are not just partially matching something unintended.
+        # A simpler way is to extract what we need and ignore the rest if the core pattern matches.
+        
+        # Extract the parts that form the date and optional location
+        core_date_text = match.group(0) # The entire matched part by pattern_mon_dd
+        # Attempt to re-match with a more restrictive pattern to ensure we got a valid date at the start
+        strict_match = re.match(r"(?:Edited\s+on\s+)?([A-Za-z]{3})\s+(\d{1,2})(?:\s*([A-Za-z\u4e00-\u9fa5]+))?", core_date_text, re.IGNORECASE)
+        if strict_match:
+            month_str, day_str, location_part = strict_match.group(1), strict_match.group(2), strict_match.group(3)
+            month = month_map.get(month_str.capitalize())
+            if month:
+                try:
+                    day = int(day_str)
+                    parsed_date_current_year = datetime(now.year, month, day)
+                    year_to_use = now.year
+                    if parsed_date_current_year > now + timedelta(days=1):
+                        year_to_use = now.year - 1
+                    dt = datetime(year_to_use, month, day)
+                    return dt.strftime("%Y-%m-%d %H:%M")
+                except ValueError:
+                    pass # Will fall through to the next pattern or random date
+    
+    # 9. Mon/DD/YYYY (e.g., Aug/25/2024) (可能带有地点)
+    # Example: "Edited on Aug/16/2024"
+    # Also allows for extra text after the location part.
+    pattern_mon_dd_yyyy = re.compile(
+         r"(?:Edited\s+on\s+)?([A-Za-z]{3})/(\d{1,2})/(\d{4})(?:\s*([A-Za-z\u4e00-\u9fa5]+))?(?:\s+.*)?", re.IGNORECASE
+    )
+    match = pattern_mon_dd_yyyy.match(timestamp_str.strip()) # Changed from fullmatch to match
+    if match:
+        strict_match = re.match(r"(?:Edited\s+on\s+)?([A-Za-z]{3})/(\d{1,2})/(\d{4})(?:\s*([A-Za-z\u4e00-\u9fa5]+))?", match.group(0), re.IGNORECASE)
+        if strict_match:
+            month_str, day_str, year_str, location_part = strict_match.group(1), strict_match.group(2), strict_match.group(3), strict_match.group(4)
+            month = month_map.get(month_str.capitalize())
+            if month:
+                try:
+                    day = int(day_str)
+                    year = int(year_str)
+                    dt = datetime(year, month, day)
+                    return dt.strftime("%Y-%m-%d %H:%M")
+                except ValueError:
+                    pass # Will fall through to the next pattern or random date
+
+    # If no format matches
+    print(f"无法解析时间格式: {original_timestamp_str}")
+    # 可选配置：返回范围内随机时间或None
+    # return get_random_timestamp()
+    return None
+
+
+def collect_huiting_content_by_keyword(data):
+    """
+    按关键词收集内容，以便于进行高频词汇提取
+    """
+    huiting_posts = []
+    for hotel in data:
+        if hotel['hotel'] == '惠庭':
+            huiting_posts.extend(hotel['posts'])
+            for post in hotel['posts']:
+                huiting_posts.extend(post['replies'])
+            
+    # 收集包含关键字的帖子内容
+    keyword_posts = {}
+    keywords = Keywords.get_keywords()
+    for k in keywords:
+        keyword_posts[k['primary_keyword'].strip()] = {}
+        for secondary_keyword in k['secondary_keywords']:
+            keyword_posts[k['primary_keyword']][secondary_keyword['keyword'].strip()] = []
+            
+    keywords_map = {}
+    for k in keywords:
+        for sk in k['secondary_keywords']:
+            keywords_map[sk['keyword'].strip()] = k['primary_keyword'].strip() # map secondary keyword to primary keyword
+
+    for post in huiting_posts:
+        content = post['content']
+        keywords_mentioned = post.get('keywords_mentioned', None)
+        if keywords_mentioned:
+            sks = keywords_mentioned.get('secondary_keyword', [])
+            for sk in sks:
+                keyword_posts[keywords_map[sk['keyword'].strip()]][sk['keyword'].strip()].append(content)
+
+    return keyword_posts
+
+def get_unanalyzed_posts(all_data, analyzed_data):
+    """
+    从所有数据中获取未分析过的帖子
+    """
+    analyzed_note_ids = [post['note_id'] for hotel in analyzed_data for post in hotel['posts']]
+    unanalyzed_posts = []
+    for hotel in all_data:
+        tmp = {
+            "hotel": hotel['hotel'],
+            "posts": [],
+        }
+        for post in hotel['posts']:
+            if post['note_id'] not in analyzed_note_ids:
+                tmp['posts'].append(post)
+        unanalyzed_posts.append(tmp)
+    return unanalyzed_posts
+
+
+def format_wb_data_from_media_crawler_by_hotel(posts, comments, hotel_name):
+    existing_data = get_raw_data('raw_data/wb.json')
+    
+    if not existing_data:
+        existing_data = []
+    
+    # 查找已存在的数据用于去重
+    existing_note_ids = []
+    for hotel in existing_data:
+        if hotel['hotel'] == hotel_name:
+            existing_note_ids = [post['note_id'] for post in hotel['posts']]
+            break
+    
+    # 新增数据内部去重
+    # 使用字典来存储去重后的posts
+    unique_posts = {}
+    for post in posts:
+        if post['note_id'] not in unique_posts and post['note_id'] not in existing_note_ids:
+            unique_posts[post['note_id']] = post
+    
+    # 使用字典来存储去重后的comments
+    unique_comments = {}
+    for comment in comments:
+        if comment['comment_id'] not in unique_comments:
+            unique_comments[comment['comment_id']] = comment
+    
+    # 将去重后的数据转换回列表
+    posts = list(unique_posts.values())
+    comments = list(unique_comments.values())
+    
+    # 将posts和comments合并成flyert.json格式
+    hotel_posts = {}  # 用于按酒店名分类存储帖子
+    
+    for post in posts:
+        post_comments = []
+        # 查找属于这个post的所有comments
+        for comment in comments:
+            if comment['note_id'] == post['note_id']:
+                # 格式化评论时间
+                comment_time = datetime.fromtimestamp(int(comment.get('create_time', 0))).strftime('%Y-%m-%d %H:%M')
+                post_comments.append({
+                    "commenter_name": comment.get('nickname', ''),
+                    "comment_content": comment.get('content', ''),
+                    "commenter_link": comment.get('profile_url', ''),
+                    "comment_time": comment_time
+                })
+        
+        # 格式化帖子时间
+        post_time = datetime.fromtimestamp(int(post.get('create_time', 0))).strftime('%Y-%m-%d %H:%M')
+        
+        # 构建符合flyert.json格式的数据结构
+        merged_post = {
+            "note_id": post.get('note_id', ''),
+            "content": post.get('content', ''),
+            "timestamp": post_time,
+            "link": post.get('note_url', ''),
+            "replies": post_comments
+        }
+        
+        if hotel_name not in hotel_posts:
+            hotel_posts[hotel_name] = {
+                "hotel": hotel_name,
+                "posts": []
+            }
+        hotel_posts[hotel_name]["posts"].append(merged_post)
+    
+    # 将字典转换为列表格式
+    merged_data = list(hotel_posts.values())
+    
+    return merged_data
+    
+
+
+if __name__ == "__main__":
+    pass
