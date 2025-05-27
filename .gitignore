@@ -1,0 +1,11 @@
+.env
+
+__pycache__/
+
+demo/
+
+venv/
+
+analysis_result/
+
+raw_data/
