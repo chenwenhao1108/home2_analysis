@@ -5,8 +5,11 @@ from pprint import pprint
 import random
 import re
 from unittest import result
+from dotenv import load_dotenv
 
 from openai import OpenAI
+
+load_dotenv()
 
 
 class OpenAIService:
